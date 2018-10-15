@@ -1,0 +1,387 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "type": "string",
+            "defaultValue": "eastus2"
+        },
+        "virtualMachineName": {
+            "type": "string"
+        },
+        "virtualMachineSize": {
+            "type": "string"
+        },
+        "ImageName": {
+            "type": "string"
+        },
+        "OSdiskType": {
+            "type": "string",
+            "allowedValues": [
+                "Standard",
+                "StandardSSD",
+                "Premium"
+              ]
+        },
+        "OSdiskSizeGB": {
+            "type": "string"
+        },
+        "isdatadisk": {
+            "type": "string",
+            "allowedValues": [
+                "yes",
+                "no"
+            ]
+        },
+        "datadisk": {
+            "type": "array"
+        },
+        "adminUsername": {
+            "type": "string",
+            "defaultValue": "pxladmin"
+        },
+        "adminPassword": {
+            "type": "securestring"
+        },
+        "RootPassword": {
+            "type": "SecureString"
+        },
+        "virtualNetworkName": {
+            "type": "string",
+            "defaultValue": "US-HOST02-USE2-DEV-VN001"
+        },
+        "vNetResourceGroup": {
+            "type": "string",
+            "defaultValue": "USE2-MI-DEV-INF-RG001"
+        },
+        "PrivateipAddress": {
+            "type": "string"
+        },
+        "OMSWorkspaceName":{
+            "type":"String",
+            "metadata": {
+                "description":"Specifies the name of the workspace."
+                        },
+            "defaultvalue": "USE2OMSSHD001"
+        },
+        "OMSResourceGroupName":{
+            "type":"String",
+            "defaultvalue": "use2-oms-shd-rg001"
+        },
+        "isavset": {
+            "type": "string",
+            "allowedValues": [
+                "yes",
+                "no"
+            ]
+        },
+        "availabilitySetName": {
+            "type": "string"
+        },
+        "availabilitySetPlatformFaultDomainCount": {
+            "type": "string",
+            "defaultValue": "2"
+        },
+        "availabilitySetPlatformUpdateDomainCount": {
+            "type": "string",
+            "defaultValue": "5"
+        },
+        "diagnosticsStorageResourceGroup": {
+            "type": "string",
+            "defaultValue": "USE2-MI-DEV-INF-RG001"
+        },
+        "diagnosticsStorageAccountName": {
+            "type": "string",
+            "defaultValue": "use2host02midiagstrg001"
+        },
+        "subnetName": {
+            "type": "string"
+        }
+    },
+    "variables": {
+        "vnetId": "[resourceId(parameters('vNetResourceGroup'),'Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+        "subnetRef": "[concat(variables('vnetId'), '/subnets/', parameters('subnetName'))]",
+        "Osdiskname": "[concat(parameters('virtualMachineName'),'-OS-SSD')]",
+        "ImageDataDiskName": "[concat(parameters('virtualMachineName'),'-DATA-SSD-001')]",
+        "diagnosticsStorageAccountId": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', parameters('diagnosticsStorageResourceGroup'), '/providers/','Microsoft.Storage/storageAccounts/',parameters('diagnosticsStorageAccountName'))]",
+        "networkInterfaceName": "[concat(parameters('virtualMachineName'),'-NIC01')]",
+        "metricsresourceid": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', resourceGroup().name, '/providers/', 'Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'))]",
+        "ImageResourceGroup": "USE2-MI-DEV-INF-RG001",
+        "environmentSettings": {
+            "yes": {
+                "vmname": "[parameters('virtualMachineName')]",
+                "vmname1": "[concat(parameters('virtualMachineName'),'temp')]"
+            },
+            "no": {
+                "vmname1": "[parameters('virtualMachineName')]",
+                "vmname": "[concat(parameters('virtualMachineName'),'temp')]"
+            }
+        },
+        "vmname": "[variables('environmentSettings')[parameters('isavset')]]",
+        "metricsclosing": "[concat('<Metrics resourceId=\"', variables('metricsresourceid'), '\"><MetricAggregation scheduledTransferPeriod=\"PT1H\"/><MetricAggregation scheduledTransferPeriod=\"PT1M\"/></Metrics></DiagnosticMonitorConfiguration></WadCfg>')]",
+        "metricscounters": "<PerformanceCounters scheduledTransferPeriod=\"PT1M\"><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\AvailableMemory\" sampleRate=\"PT15S\" unit=\"Bytes\"><annotation displayName=\"Memory available\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\PercentAvailableMemory\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"Mem. percent available\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\UsedMemory\" sampleRate=\"PT15S\" unit=\"Bytes\"><annotation displayName=\"Memory used\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\PercentUsedMemory\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"Memory percentage\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\PercentUsedByCache\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"Mem. used by cache\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\PagesPerSec\" sampleRate=\"PT15S\" unit=\"CountPerSecond\"><annotation displayName=\"Pages\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\PagesReadPerSec\" sampleRate=\"PT15S\" unit=\"CountPerSecond\"><annotation displayName=\"Page reads\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\PagesWrittenPerSec\" sampleRate=\"PT15S\" unit=\"CountPerSecond\"><annotation displayName=\"Page writes\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\AvailableSwap\" sampleRate=\"PT15S\" unit=\"Bytes\"><annotation displayName=\"Swap available\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\PercentAvailableSwap\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"Swap percent available\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\UsedSwap\" sampleRate=\"PT15S\" unit=\"Bytes\"><annotation displayName=\"Swap used\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Memory\\PercentUsedSwap\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"Swap percent used\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Processor\\PercentIdleTime\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"CPU idle time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Processor\\PercentUserTime\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"CPU user time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Processor\\PercentNiceTime\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"CPU nice time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Processor\\PercentPrivilegedTime\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"CPU privileged time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Processor\\PercentInterruptTime\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"CPU interrupt time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Processor\\PercentDPCTime\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"CPU DPC time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Processor\\PercentProcessorTime\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"CPU percentage guest OS\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\Processor\\PercentIOWaitTime\" sampleRate=\"PT15S\" unit=\"Percent\"><annotation displayName=\"CPU IO wait time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\BytesPerSecond\" sampleRate=\"PT15S\" unit=\"BytesPerSecond\"><annotation displayName=\"Disk total bytes\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\ReadBytesPerSecond\" sampleRate=\"PT15S\" unit=\"BytesPerSecond\"><annotation displayName=\"Disk read guest OS\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\WriteBytesPerSecond\" sampleRate=\"PT15S\" unit=\"BytesPerSecond\"><annotation displayName=\"Disk write guest OS\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\TransfersPerSecond\" sampleRate=\"PT15S\" unit=\"CountPerSecond\"><annotation displayName=\"Disk transfers\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\ReadsPerSecond\" sampleRate=\"PT15S\" unit=\"CountPerSecond\"><annotation displayName=\"Disk reads\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\WritesPerSecond\" sampleRate=\"PT15S\" unit=\"CountPerSecond\"><annotation displayName=\"Disk writes\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\AverageReadTime\" sampleRate=\"PT15S\" unit=\"Seconds\"><annotation displayName=\"Disk read time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\AverageWriteTime\" sampleRate=\"PT15S\" unit=\"Seconds\"><annotation displayName=\"Disk write time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\AverageTransferTime\" sampleRate=\"PT15S\" unit=\"Seconds\"><annotation displayName=\"Disk transfer time\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\PhysicalDisk\\AverageDiskQueueLength\" sampleRate=\"PT15S\" unit=\"Count\"><annotation displayName=\"Disk queue length\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\NetworkInterface\\BytesTransmitted\" sampleRate=\"PT15S\" unit=\"Bytes\"><annotation displayName=\"Network out guest OS\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\NetworkInterface\\BytesReceived\" sampleRate=\"PT15S\" unit=\"Bytes\"><annotation displayName=\"Network in guest OS\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\NetworkInterface\\PacketsTransmitted\" sampleRate=\"PT15S\" unit=\"Count\"><annotation displayName=\"Packets sent\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\NetworkInterface\\PacketsReceived\" sampleRate=\"PT15S\" unit=\"Count\"><annotation displayName=\"Packets received\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\NetworkInterface\\BytesTotal\" sampleRate=\"PT15S\" unit=\"Bytes\"><annotation displayName=\"Network total bytes\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\NetworkInterface\\TotalRxErrors\" sampleRate=\"PT15S\" unit=\"Count\"><annotation displayName=\"Packets received errors\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\NetworkInterface\\TotalTxErrors\" sampleRate=\"PT15S\" unit=\"Count\"><annotation displayName=\"Packets sent errors\" locale=\"en-us\"/></PerformanceCounterConfiguration><PerformanceCounterConfiguration counterSpecifier=\"\\NetworkInterface\\TotalCollisions\" sampleRate=\"PT15S\" unit=\"Count\"><annotation displayName=\"Network collisions\" locale=\"en-us\"/></PerformanceCounterConfiguration></PerformanceCounters>",
+        "metricsstart": "<WadCfg><DiagnosticMonitorConfiguration overallQuotaInMB=\"4096\"><DiagnosticInfrastructureLogs scheduledTransferPeriod=\"PT1M\" scheduledTransferLogLevelFilter=\"Warning\"/>",
+        "wadcfgx": "[concat(variables('metricsstart'), variables('metricscounters'), variables('metricsclosing'))]",
+        "diagnosticsExtensionName": "Microsoft.Insights.VMDiagnosticsSettings",
+        "commandToExecute": "[concat('sh PostConfigLinux.bash ', parameters('RootPassword'))]"
+    },
+    "resources": [
+      {
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "name": "[concat(parameters('virtualMachineName'),'/SatClientRegScript')]",
+          "apiVersion": "2017-12-01",
+          "location": "[parameters('location')]",
+          "dependsOn": [
+               "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'))]"
+           ],
+          "properties": {
+              "publisher": "Microsoft.OSTCExtensions",
+              "type": "CustomScriptForLinux",
+              "typeHandlerVersion": "1.4",
+              "autoUpgradeMinorVersion": true,
+              "settings": {
+                  "fileUris": [
+                      "http://use2shdrsat1001.computer.parexelcloud.ext/pub/sat6.3-fully-automated-client-registration-script.sh"
+                  ],
+                  "commandToExecute": "sh sat6.3-fully-automated-client-registration-script.sh"
+              }
+          }
+      },
+      {
+          "type": "Microsoft.Compute/virtualMachines/extensions",
+          "name": "[concat(parameters('virtualMachineName'),'/PostConfigScriptForLinux')]",
+          "apiVersion": "2015-06-15",
+          "location": "[parameters('location')]",
+          "properties": {
+              "publisher": "Microsoft.Azure.Extensions",
+              "type": "CustomScript",
+              "typeHandlerVersion": "2.0",
+              "autoUpgradeMinorVersion": true,
+              "settings": {
+                  "skipDos2Unix": false
+              },
+              "protectedSettings": {
+                  "fileUris": [
+                      "https://use2host02mivmstrg001.blob.core.windows.net/postconfigscriptforlinux/PostConfigLinux.bash"
+                  ],
+                  "commandToExecute": "[variables('commandToExecute')]"
+              }
+          },
+          "dependsOn": [
+              "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'))]",
+              "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'),'/extensions/','NetworkWatcherAgent')]"
+          ]
+      },
+      {
+            "comments": "Network Watcher Agent Installation",
+            "name": "[concat(parameters('virtualMachineName'),'/', 'NetworkWatcherAgent')]",
+            "apiVersion": "2015-06-15",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'))]"
+                ],
+            "properties": {
+                "publisher": "Microsoft.Azure.NetworkWatcher",
+                "type": "NetworkWatcherAgentLinux",
+                "typeHandlerVersion": "1.4",
+                "autoUpgradeMinorVersion": true
+            }
+        },
+        {
+            "type":"Microsoft.Compute/virtualMachines/extensions",
+            "name":"[concat(parameters('virtualMachineName'), '/', 'MicrosoftMonitoringAgent')]",
+            "apiVersion":"2015-06-15",
+            "location":"[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'))]",
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'),'/extensions/','NetworkWatcherAgent')]",
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'),'/extensions/',variables('diagnosticsExtensionName'))]",
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'),'/extensions/','PostConfigScriptForLinux')]"
+            ],
+            "properties":{
+                "publisher":"Microsoft.EnterpriseCloud.Monitoring",
+                "type":"OmsAgentForLinux",
+                "typeHandlerVersion":"1.7",
+                "settings":{
+                    "workspaceId":"[reference(resourceId('16162b89-77e4-4929-b39d-5155c30c0d4b',parameters('OMSResourceGroupName'),'Microsoft.OperationalInsights/workspaces', parameters('OMSWorkspaceName')), '2015-03-20').customerId]"
+                },
+                "protectedSettings":{
+                    "workspaceKey":"[listKeys(resourceId('16162b89-77e4-4929-b39d-5155c30c0d4b',parameters('OMSResourceGroupName'),'Microsoft.OperationalInsights/workspaces', parameters('OMSWorkspaceName')), '2015-03-20').primarySharedKey]"
+                }
+            }
+        },
+        {
+            "condition": "[equals(parameters('isavset'),'yes')]",
+            "name": "[if(equals(parameters('isavset'), 'yes'), parameters('virtualMachineName'), concat(parameters('virtualMachineName'),'-1'))]",
+
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2018-04-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]",
+                "[concat('Microsoft.Compute/availabilitySets/', parameters('availabilitySetName'))]"
+            ],
+            "properties": {
+                "osProfile": {
+                    "computerName": "[toLower(parameters('virtualMachineName'))]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "hardwareProfile": {
+                    "vmSize": "[parameters('virtualMachineSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "id": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', variables('ImageResourceGroup'), '/providers/','Microsoft.Compute/images/',parameters('ImageName'))]"
+                    },
+                    "osDisk": {
+                        "name": "[variables('Osdiskname')]",
+                        "diskSizeGB": "[parameters('OSdiskSizeGB')]",
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[concat(parameters('OSdiskType'),'_LRS')]"
+                        }
+                    },
+                    "dataDisks": [
+                    {
+                        "name": "[variables('ImageDataDiskName')]",
+                        "lun": 0,
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[concat(parameters('OSdiskType'),'_LRS')]"
+                        }
+                    } ]
+                },
+                "networkProfile": {
+                    "networkInterfaces": [{
+                        "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+                    }]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[reference(resourceId(parameters('diagnosticsStorageResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('diagnosticsStorageAccountName')), '2015-06-15').primaryEndpoints['blob']]"
+                    }
+                },
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('availabilitySetName'))]"
+                }
+            }
+        },
+        {
+            "condition": "[equals(parameters('isavset'),'no')]",
+            "name": "[if(equals(parameters('isavset'), 'no'), parameters('virtualMachineName'), concat(parameters('virtualMachineName'),'-1'))]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2018-04-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]"
+            ],
+            "properties": {
+                "osProfile": {
+                    "computerName": "[toLower(parameters('virtualMachineName'))]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "hardwareProfile": {
+                    "vmSize": "[parameters('virtualMachineSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "id": "[concat('/subscriptions/', subscription().subscriptionId, '/resourceGroups/', variables('ImageResourceGroup'), '/providers/','Microsoft.Compute/images/',parameters('ImageName'))]"
+                    },
+                    "osDisk": {
+                        "name": "[variables('Osdiskname')]",
+                        "diskSizeGB": "[parameters('OSdiskSizeGB')]",
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[concat(parameters('OSdiskType'),'_LRS')]"
+                        }
+                    },
+                    "dataDisks": [
+                    {
+                        "name": "[variables('ImageDataDiskName')]",
+                        "lun": 0,
+                        "createOption": "fromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[concat(parameters('OSdiskType'),'_LRS')]"
+                        }
+                    } ]
+                },
+                "networkProfile": {
+                    "networkInterfaces": [{
+                        "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+                    }]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[reference(resourceId(parameters('diagnosticsStorageResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('diagnosticsStorageAccountName')), '2015-06-15').primaryEndpoints['blob']]"
+                    }
+                }
+            }
+        },
+        {
+            "name": "[concat(parameters('virtualMachineName'),'/', variables('diagnosticsExtensionName'))]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2017-03-30",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineName'))]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.OSTCExtensions",
+                "type": "LinuxDiagnostic",
+                "typeHandlerVersion": "2.3",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "StorageAccount": "[parameters('diagnosticsStorageAccountName')]",
+                    "xmlCfg": "[base64(variables('wadcfgx'))]"
+                },
+                "protectedSettings": {
+                    "storageAccountName": "[parameters('diagnosticsStorageAccountName')]",
+                    "storageAccountKey": "[listKeys(variables('diagnosticsStorageAccountId'),'2015-06-15').key1]",
+                    "storageAccountEndPoint": "https://core.windows.net/"
+                }
+            }
+        },
+        {
+            "condition": "[equals(parameters('isavset'),'yes')]",
+            "name": "[parameters('availabilitySetName')]",
+            "type": "Microsoft.Compute/availabilitySets",
+            "apiVersion": "2016-04-30-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "platformFaultDomainCount": "[parameters('availabilitySetPlatformFaultDomainCount')]",
+                "platformUpdateDomainCount": "[parameters('availabilitySetPlatformUpdateDomainCount')]",
+                "managed": true
+            }
+        },
+        {
+            "name": "[variables('networkInterfaceName')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2016-09-01",
+            "location": "[parameters('location')]",
+            "dependsOn": [],
+            "properties": {
+                "ipConfigurations": [{
+                    "name": "ipconfig1",
+                    "properties": {
+                        "subnet": {
+                            "id": "[variables('subnetRef')]"
+                        },
+                        "privateIPAllocationMethod": "Static",
+                        "privateIPAddress": "[parameters('PrivateipAddress')]"
+                    }
+                }]
+            }
+        }
+    ],
+    "outputs": {
+        "adminUsername": {
+            "type": "string",
+            "value": "[parameters('adminUsername')]"
+        }
+    }
+}
